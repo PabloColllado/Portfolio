@@ -1,0 +1,846 @@
+---
+title: "Legos2"
+author: "Pablo"
+date: "2025-01-25"
+output: 
+  html_document:
+    theme: journal
+    fig_caption: yes
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("C:/Users/pablo/OneDrive/Escritorio/Portfolio/R/lego_data")
+```
+
+# Lego
+
+Cargamos los datos:
+
+```{r}
+data <- read.csv("lego_population_cof.csv")
+```
+
+Cargamos las librerías:
+
+```{r}
+suppressPackageStartupMessages(library(tidytable))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(skimr))
+suppressPackageStartupMessages(library(forcats))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(mice))
+suppressPackageStartupMessages(library(naniar))
+suppressPackageStartupMessages(library(corrplot))
+
+```
+
+## Análisis descriptivo y limpieza de los datos
+
+Para hacernos una idea general del conjunto de datos veremos:
+
+
+```{r}
+# Primero vemos su estructura
+
+str(data)
+```
+
+
+```{r}
+#Vemos las filas y columnas del dataset
+
+dim(data)
+```
+Vamos a realizar una breve descripción de cada variable del conjunto de datos:
+
+X: Un índice numérico que identifica cada observación en el conjunto de datos.
+
+Item_Number: El número de identificación único para cada juego de LEGO.
+
+Set_Name: El nombre del conjunto de LEGO.
+
+Amazon_Price: El precio del conjunto de LEGO en la plataforma de Amazon.
+
+Year: El año de lanzamiento del conjunto de LEGO.
+
+Pages: El número de páginas del conjunto de instrucciones del juego.
+
+unique_pieces: El número total de piezas únicas en el conjunto de LEGO.
+
+Theme: El tema al que pertenece el conjunto de LEGO.
+
+Pieces: El número total de piezas en el conjunto de LEGO.
+
+Price: El precio del conjunto de LEGO.
+
+Ages: La edad recomendada para jugar con el conjunto de LEGO.
+
+Minifigures: El número de minifiguras incluidas en el conjunto de LEGO.
+
+Packaging: El tipo de embalaje del conjunto de LEGO.
+
+Weight: El peso del conjunto de LEGO.
+
+Availability: La disponibilidad del conjunto de LEGO.
+
+Size: El tamaño del conjunto de LEGO.
+
+```{r}
+# Vemos si hubiera algún dato duplicado, 
+
+anyDuplicated(data)
+```
+```{r}
+DT <- as.data.table(data)
+#Primeras filas
+
+DT %>% slice_head(n = 6) %>% as.data.table() %>% head()
+
+```
+```{r}
+# Crear el gráfico de mosaico de valores faltantes
+vis_miss(data)
+```
+
+
+
+```{r}
+
+
+# Siendo 'data' es el nombre de los datos y 'DT' es el data.table correspondiente
+
+
+desc_DT <- skim(DT)  
+
+var_type_missing_DT <- desc_DT %>%
+  mutate(n_missing_perc = 100 * round(1-complete_rate, 3)) %>%
+  select(skim_type, skim_variable, n_missing, n_missing_perc) %>% 
+  arrange(skim_type, n_missing)
+
+print(var_type_missing_DT)
+
+
+```
+
+Este resumen de datos proporciona una visión general de la estructura del conjunto de datos, incluyendo el número de filas y columnas o los tipos de datos presentes. Esto es útil para comprender la naturaleza y la organización de los datos antes de realizar un análisis más detallado.
+
+
+```{r}
+data_wonulls <- data %>% drop_na()
+
+round(1 - nrow(data_wonulls) / nrow(data), 3)*100
+```
+Todos los datos en el conjunto original (data) tienen valores faltantes y por lo tanto, al eliminar los valores faltantes, no quedarían filas en data_wonulls
+
+Vemos que las variables "Pages" y "Price" tienen un 100% de valores faltantes por lo que procederemos a eliminar dichas variables. La variable X es simplemente un índice numérico que identifica cada observación en el conjunto de datos y no aporta información adicional para tu análisis, por lo que también la eliminaremos.
+
+```{r}
+DT <- select(DT, -c(Pages, Price, X)) #Weight, Minifigures, X, Item_Number))
+```
+
+Observamos en los datos una reducción significativa en la cantidad de valores faltantes a partir de la fila 731.
+
+```{r}
+# Intervalo 1-730
+porcentaje_faltantes_intervalo1 <- mean(rowMeans(is.na(DT[1:730])) * 100, na.rm = TRUE)
+
+# Intervalo 731-2307
+porcentaje_faltantes_intervalo2 <- mean(rowMeans(is.na(DT[731:2307])) * 100, na.rm = TRUE)
+
+# Intervalo 1-2307
+porcentaje_faltantes_total <- mean(rowMeans(is.na(DT)) * 100, na.rm = TRUE)
+
+# Imprimir los resultados
+print(porcentaje_faltantes_intervalo1)
+print(porcentaje_faltantes_intervalo2)
+print(porcentaje_faltantes_total)
+```
+Efectivamente, podemos observar que en las primeras 730 filas, la media de valores faltantes por fila es del 71.42%, mientras que en el intervalo de la fila 731 a la 2307, este porcentaje desciende considerablemente al 22.89%. Esto provoca un aumento en la media total de valores faltantes por fila, alcanzando el 38.25% debido al primer intervalo.
+
+Por lo tanto, consideramos pertinente filtrar el dataset, conservando únicamente las filas del segundo intervalo.
+
+```{r}
+DT <- filter(DT, row_number() > 730)
+```
+
+Veamos graficamente la distribución de los valores faltantes con la selección del segundo intervalo.
+
+```{r}
+# Crear el gráfico de mosaico de valores faltantes
+vis_miss(DT)
+```
+
+A continuación veremos la estructura actual de los datos después de la selección del segundo intervalo.
+
+```{r}
+str(DT)
+```
+Hemos podido ver como ha cambiado significativamente la estructura y la distribución de los valores faltantes de nuestros datos. Ahora, continuaremos modelandolos haciendo algunas transformaciones.
+
+```{r}
+# Convertir la columna Amazon_Price a numérica, eliminando todos los valores que no sean números del 0-9 y el punto decimal
+
+DT[, Amazon_Price := as.numeric(gsub("[^0-9.]", "", Amazon_Price))]
+```
+
+Convertimos variables integer en numeric
+
+```{r}
+DT[, c("Year", "unique_pieces", "Pieces", "Item_Number", "Minifigures") := lapply(.SD, as.numeric), .SDcols = c("Year", "unique_pieces", "Pieces", "Item_Number", "Minifigures")]
+```
+
+Para simplificar la variable "Weight", procedemos a extraer sus valores en kilogramos y los almacenamos en una nueva columna denominada "Peso_Kg". Posteriormente, eliminamos la variable original "Weight" del conjunto de datos.
+
+
+```{r}
+# Función para extraer solo el peso en kg
+extraer_peso_kg <- function(peso) {
+  # Eliminar todo entre paréntesis
+  peso_sin_parentesis <- gsub("\\(.*?\\)", "", peso)
+  
+  # Eliminar caracteres no numéricos excepto la coma/punto decimal
+  peso_kg <- gsub("[^0-9.,]", "", peso_sin_parentesis)
+  
+  # Convertir a tipo numérico
+  as.numeric(peso_kg)
+}
+
+# Aplicar la función a la columna "Peso"
+DT$Peso_Kg <- extraer_peso_kg(DT$Weight)
+
+DT <- select(DT, -Weight)
+```
+
+Convertiremos las variables a factor, excepto Set_Name, al ser el nombre para cada juego
+
+
+```{r}
+# Convertir las columnas usando lapply
+DT[, c("Theme", "Ages", "Packaging", "Availability", "Size", "Year") := lapply(.SD, as.factor), .SDcols = c("Theme", "Ages", "Packaging", "Availability", "Size", "Year")]
+```
+
+
+Tras este análisis inicial, observamos que aunque se ha reducido significativamente la cantidad de valores faltantes al eliminar el primer intervalo, aún persiste una cantidad considerable de datos faltantes. Por lo tanto, procederemos a realizar la imputación de estos valores para garantizar la integridad y la completitud de nuestros datos.
+
+
+Imputación de las variables númericas:
+
+```{r}
+columnas_numericas <- c("unique_pieces", "Pieces", "Minifigures", "Amazon_Price")
+
+# Imputamos con MICE
+imp <- mice(DT[, c("unique_pieces", "Pieces", "Minifigures", "Amazon_Price")], m = 5, maxit = 50)
+
+# Completamos el data table con las imputaciones realizadas
+DT[, columnas_numericas] <- complete(imp)
+
+```
+
+```{r}
+DT <- select(DT, -Item_Number)
+```
+
+Para imputar la variable Peso_Kg, partimos del sentido de pensar que existe una relación entre el peso del juego y la cantidad de piezas que tiene, ya que a medida que aumenta el número de piezas en un conjunto LEGO, es probable que también aumente su peso debido al material utilizado para fabricar las piezas adicionales.
+
+Por ello, haremos una comprobación de la relación entre ambos y plantear la imputación de esta variable por una regresión lineal con la variable Piece.
+
+```{r}
+#Comprobamos si hay algún tipo de relación lineal entre el peso y la cantidad de piezas
+modelo <- lm(Peso_Kg ~ Pieces, data = DT)
+summary(modelo)
+```
+Visualizamos esta relación lineal.
+
+```{r}
+ggplot(DT, aes(x = Pieces, y = Peso_Kg)) +
+  geom_point() +  # Puntos de dispersión
+  geom_smooth(method = "lm", se = FALSE) +  # Línea de regresión sin intervalo de confianza
+  labs(title = "Relación entre Peso y Cantidad de Piezas",
+       x = "Cantidad de Piezas",
+       y = "Peso (Kg)")
+```
+
+
+Teniendo esto en cuenta, consideramos imputar los valores de Peso_Kg mediante una regresión lineal simple con Pieces siendo apropiado debido a la fuerte relación (p < 0.001, R-cuadrado ajustado de 0.787) entre ambas variables. Los coeficientes estimados revelan que el número de piezas influye significativamente en el peso de los conjuntos LEGO.
+
+```{r}
+#Filtrar las filas con valores faltantes en Peso_Kg
+datos_faltantes <- DT[is.na(Peso_Kg), ]
+
+# Imputar los valores faltantes de Peso_Kg usando las predicciones del modelo
+DT[is.na(Peso_Kg), "Peso_Kg"] <- predict(modelo, newdata = datos_faltantes)
+```
+
+
+Y con la moda los factores:
+
+```{r}
+# Reemplazar "Age_NA" con NA en la variable Age
+DT$Ages[DT$Ages == "Ages_NA"] <- NA
+```
+
+
+```{r}
+# Definir la función moda para variables factor
+moda_factor <- function(v) {
+  # Convertir a vector de caracteres
+  v <- as.character(v)
+  
+  # Contar la frecuencia de cada valor
+  counts <- table(v)
+  
+  # Encontrar el valor con mayor frecuencia
+  moda <- names(which.max(counts))
+  
+  # Devolver la moda
+  moda
+}
+
+# Lista de nombres de columnas factor
+columnas_factores <- c("Theme", "Ages", "Packaging", "Availability", "Size", "Year")
+
+# Imputar la moda a los valores faltantes en las columnas factor
+for (col in columnas_factores) {
+  DT[[col]][is.na(DT[[col]])] <- moda_factor(DT[[col]])
+}
+
+```
+
+Observamos que el factor "Ages" presenta demasiados niveles, lo que genera un exceso de información y dificulta nuestro análisis. Para simplificar el proceso y mejorar la gestión de los datos, consideramos recodificar este factor en un menor número de niveles.
+
+```{r}
+unique(DT$Ages)
+```
+
+
+```{r}
+#Recodificamos la variable Ages
+
+DT$Ages <- fct_recode(
+  DT$Ages,
+  "1+" = "Ages_1 - 3",
+  "1+" = "Ages_1+",
+  "2+" = "Ages_2 - 5",
+  "2+" = "Ages_2+",
+  "2+" = "Ages_2 - 6",
+  "3+" = "Ages_3 - 6",
+  "3+" = "Ages_3+",
+  "4+" = "Ages_4 - 99",
+  "4+" = "Ages_4 - 7",
+  "4+" = "Ages_4 - 6",
+  "4+" = "Ages_4+",
+  "5+" = "Ages_5 - 99",
+  "5+" = "Ages_5 - 10",
+  "5+" = "Ages_5 - 12",
+  "5+" = "Ages_5+",
+  "6+" = "Ages_6 - 14",
+  "6+" = "Ages_6 - 10",
+  "6+" = "Ages_6 - 12",
+  "6+" = "Ages_6+",
+  "7+" = "Ages_7 - 12",
+  "7+" = "Ages_7 - 14",
+  "7+" = "Ages_7+",
+  "8+" = "Ages_8 - 14",
+  "8+" = "Ages_8 - 12",
+  "8+" = "Ages_8+",
+  "9+" = "Ages_9 - 12",
+  "9+" = "Ages_9 - 14",
+  "9+" = "Ages_9+",
+  "10+" = "Ages_10+",
+  "11+" = "Ages_11+",
+  "12+" = "Ages_12+",
+  "14+" = "Ages_14+",
+  "16+" = "Ages_16+",
+  "18+" = "Ages_18+",
+)
+```
+
+```{r}
+unique(DT$Ages)
+```
+Tras realizar algunas transformaciones adicionales, hemos simplificado nuestros datos y los hemos vuelto más manejables. Además, hemos logrado eliminar la presencia de valores faltantes, lo que facilitará nuestro análisis y la interpretación de los resultados.
+
+```{r}
+# Crear el gráfico de mosaico de valores faltantes
+vis_miss(DT)
+```
+
+Una vez disponemos de un data table completo y sin valores faltantes, a excepción de la variable "Set_Name" que es de tipo caracter y representa el nombre de cada juego, no tiene sentido imputar valores a esta variable ya que no aporta más información relevante que el propio nombre del juego.
+
+Hemos observado que algunas variables, como el peso del juego y el número de piezas, están relacionadas entre sí. Ahora, procederemos a analizar cómo se relacionan entre sí las variables de nuestro conjunto de datos.
+
+```{r}
+colnames(DT)
+```
+
+```{r}
+# Análisis exploratorio de datos
+summary_DT <- DT[, summary(.SD), .SDcols = c("Amazon_Price", "Year", "Theme", "unique_pieces", "Pieces", "Minifigures", "Ages", "Peso_Kg", "Size", "Packaging", "Availability")]
+print(summary_DT)
+
+```
+El resumen muestra la variabilidad en precios de Amazon y la distribución de años y temas. Además, se destaca la diversidad en la cantidad de piezas y minifiguras, así como en las edades recomendadas. Por último, se observa la amplitud en el peso de los juegos y la diversidad de embalajes y disponibilidad en el mercado.
+
+Visualicemos la distribución de las distintas variables.
+
+```{r}
+# Seleccionar variables categóricas
+variables_categoricas <- c("Year", "Theme", "Ages", "Packaging", "Availability", "Size")
+
+# Visualizar cada variable
+lapply(variables_categoricas, function(variable) {
+  ggplot(DT, aes_string(x = variable)) +
+    geom_bar(stat = "count", fill = "honeydew3") +
+    labs(title = paste0("Distribución de ", variable), x = variable, y = "Frecuencia")
+})
+```
+
+Observamos que hay una variable que destaca notablemente sobre las demás en las visualizaciones. Es importante considerar que este resaltado puede estar influenciado por la imputación por la moda que llevamos a cabo anteriormente.
+
+Para la visualización de las variables numéricas realizaremos un gráfico de denisdad, similar al histograma, pero muestra la densidad de probabilidad de la variable. Nos permite una visualización más suave de la distribución y facilita la comparación de variables con diferentes escalas
+
+```{r}
+# Seleccionar variables numéricas
+variables_numericas <- names(DT)[sapply(DT, is.numeric)]
+
+# Generar un gráfico de densidad para cada variable
+lapply(variables_numericas, function(variable) {
+  ggplot(DT, aes_string(x = variable)) +
+    geom_density(fill = "lightpink3") +
+    labs(title = paste0("Distribución de ", variable), x = variable, y = "Densidad")
+})
+```
+
+
+Observamos la presencia de una "cola" en las distintas visualizaciones, lo cual sugiere la posible presencia de valores atípicos o outliers en los datos.
+
+A continuación veremos como se relacionan las diferentes variables númericas entre ellas.
+
+```{r}
+data_num <- select_if(DT, (is.numeric)) # nos quedamos con todas las variables numéricas
+
+correlacion_pearson_data = cor(data_num, use = "pairwise.complete.obs")
+
+corrplot(correlacion_pearson_data,method = "circle", type="upper", addgrid.col = NA, tl.col = "black", diag = FALSE, order = "hclust", tl.cex=0.7) # visualización de la matriz
+
+print(correlacion_pearson_data)
+```
+
+
+La matriz de correlación muestra la relación entre las variables en tus datos. Se observa una correlación positiva fuerte entre el precio de Amazon y la cantidad de piezas únicas, así como con el peso de los productos y el número total de piezas (como ya habíamos comprobado). Además, se evidencia una correlación moderada con la cantidad de minifiguras. Estas correlaciones sugieren que a medida que el precio de Amazon aumenta, también lo hacen la complejidad y el peso de los productos, así como el número de piezas y minifiguras.
+
+
+A continuación, veremos como se relacionan las variables categóricas con el precio en amazon de cada juego.
+
+```{r}
+data_fact <- select_if(DT, (is.factor))
+colnames(data_fact)
+```
+
+
+```{r}
+data_fact <- select_if(DT, (is.factor))
+
+# Obtener nombres de las variables categóricas
+categorias <- names(data_fact)
+
+# Crear una lista para almacenar los gráficos
+plots <- list()
+
+# Iterar sobre cada variable categórica
+for (categoria in categorias) {
+  # Crear un gráfico de caja para cada variable categórica
+  plot <- ggplot(data = DT, aes_string(x = categoria, y = "Amazon_Price")) +
+    geom_boxplot() +
+    labs(x = categoria, y = "Amazon_Price") +
+    theme_minimal() 
+  
+# Almacenar el gráfico en la lista
+  plots[[categoria]] <- plot
+}
+
+# Mostrar los gráficos
+plots
+
+```
+
+
+Observando la relación entre las variables categóricas y el precio de los juegos en Amazon, se observa una tendencia positiva entre la edad recomendada y el precio. Esto significa que, en general, los juegos con una edad recomendada más alta tienden a tener un precio más elevado.
+
+```{r}
+DT %>% 
+  filter(Ages == "18+") %>%
+  arrange(desc(Amazon_Price)) %>% 
+  head()
+```
+
+
+```{r}
+DT %>% 
+  filter(Ages == "1+") %>%
+  arrange(desc(Amazon_Price)) %>% 
+  head()
+```
+
+
+Al analizar los precios máximos de juegos recomendados para distintas edades, encontramos una disparidad significativa, con juegos para mayores de 18 años alcanzando hasta 131.95, mientras que los destinados a menores de 1 año solo llegan a 17.91. Esto sugiere una adaptación de temáticas y características según la edad, con variaciones en la cantidad de piezas únicas y minifiguras. Estos hallazgos reflejan una estrategia de personalización y diferenciación de productos, considerando las necesidades y preferencias específicas de cada grupo demográfico.
+
+
+## Analisis por temática y cantidad de minifiguras
+
+Dada la información previa, con el objetivo de realizar una segmentación del mercado basada en temáticas, es fundamental comenzar por visualizar la frecuencia de cada temática presente en nuestros datos. Este enfoque nos permitirá comprender la distribución de las temáticas y su relevancia en nuestro conjunto de datos, facilitando así la identificación de patrones y la posterior segmentación del mercado de manera más informada y precisa.
+
+```{r}
+tema_freq <- unique(DT[ , .(.N), by = Theme])
+# Ordenamos
+setorder(tema_freq, -N)
+
+print(head(tema_freq, 6))
+```
+
+```{r}
+ggplot(tema_freq, aes( x = fct_reorder(Theme, N), y = N)) +
+  geom_col(group = 1, fill = 'darkgreen') +
+  coord_flip() +
+  labs(x = 'Temas', y = 'Frecuencia', title = 'Frecuencia Temas') +
+  theme_bw()
+```
+
+
+Vemos como la temática de Star Wars es el que con diferencia tiene una mayor frecuencia. 
+
+```{r}
+# Filtrar para eliminar las observaciones con valores faltantes en Minifigures y Theme
+DT_filtrados <- DT[complete.cases(DT$Minifigures) & complete.cases(DT$Theme), ]
+
+# Calcular la suma de Minifigures por tema y ordenar de manera descendente
+temas_figuras <- DT_filtrados[, .(Suma_Minifiguras = sum(Minifigures)), by = Theme][order(-Suma_Minifiguras)][1:10]
+
+# Visualizar los 10 temas más freceuntes junto con la cantidad de minifiguras
+print(temas_figuras)
+```
+
+
+```{r}
+# Especificar el orden deseado de las edades
+orden_edades <- c("1+", "2+", "3+", "4+", "5+", 
+                  "6+", "7+", "8+", "9+", "10+", 
+                  "11+", "12+", "14+", "16+", "18+")
+
+# Convertir la variable de edades en un factor con el orden deseado
+DT$Ages <- factor(DT$Ages, levels = orden_edades)
+
+# Filtrar para obtener las cinco principales temáticas
+top_themes <- DT[, .N, by = Theme][order(-N)][1:5]$Theme
+
+# Filtrar el dataset para incluir solo las observaciones de las cinco principales temáticas
+DT_top <- DT[Theme %in% top_themes]
+
+# Crear el gráfico de mosaico
+ggplot(DT_top, aes(x = Ages, fill = Theme)) +
+  geom_bar(position = "fill") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_minimal() +
+  labs(x = "Edades", y = "Proporción", fill = "Temas") +
+  ggtitle("Distribución de edades por tema")
+```
+
+
+Podemos ver la distribución de los Temas por EDAD, viendo como para los niños "mayores" y adolescentes va destinado la temática de Star Wars, que a su vez es la mayoritaria, mientras que para los más pequeños está destinado Duplo, analicemos las diferencias entre ambos.
+
+
+```{r}
+# Filtrar el dataset para incluir solo los temas Duplo y Star Wars
+DT_duplo_starwars <- DT[DT$Theme %in% c("Duplo", "Star Wars"), ]
+
+# Crear el gráfico de violín
+ggplot(DT_duplo_starwars, aes(x = Theme, y = Minifigures, fill = Theme)) +
+  geom_violin() +
+  labs(title = "Cantidad de minifiguras en los temas Duplo y Star Wars",
+       x = "Tema",
+       y = "Cantidad de Minifiguras") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+La temática Star Wars generalmente tienen más minifiguras que los de la temática Duplo.
+La cantidad de minifiguras en Star Wars tiene una mayor dispersión, con algunos sets que tienen un número significativamente mayor de minifiguras que otros. Veamos si la cantidad de minifiguras está relacionado con el precio en Amazon y la edad
+
+Star Wars
+
+```{r}
+DT_top5_mas <- DT %>%
+  filter(Theme %in% c("Star Wars")) %>%
+  arrange(desc(Minifigures)) %>%
+  slice(1:5) %>%
+  select(Theme, Minifigures, Amazon_Price, Ages)
+
+DT_top5_menos <- DT %>%
+  filter(Theme %in% c("Star Wars")) %>%
+  arrange(Minifigures) %>%
+  slice(1:5) %>%
+  select(Theme, Minifigures, Amazon_Price, Ages)
+
+print(DT_top5_mas)
+print(DT_top5_menos)
+```
+
+Duplo
+
+```{r}
+DT_top5_mas <- DT %>%
+  filter(Theme %in% c("Duplo")) %>%
+  arrange(desc(Minifigures)) %>%
+  slice(1:5) %>%
+  select(Theme, Minifigures, Amazon_Price, Ages)
+
+DT_top5_menos <- DT %>%
+  filter(Theme %in% c("Duplo")) %>%
+  arrange(Minifigures) %>%
+  slice(1:5) %>%
+  select(Theme, Minifigures, Amazon_Price, Ages)
+
+print(DT_top5_mas)
+print(DT_top5_menos)
+```
+
+```{r}
+# Filtrar el dataset para incluir solo las temáticas de Star Wars y Duplo
+DT_filtered <- DT[Theme %in% c("Star Wars", "Duplo")]
+
+# Crear el gráfico de dispersión
+starwars_duplo_gr <- ggplot(DT_filtered, aes(x = Minifigures, y = Amazon_Price)) +
+  geom_point(fill = 'grey', alpha = 0.25, size = 2) +
+  geom_smooth(span = 2) +
+  facet_grid(. ~ Theme, scales = 'free') +
+  labs(x = 'Minifiguras', y = 'Amazon_Price') +
+  theme_bw()
+
+# Agregar títulos y subtítulos
+starwars_duplo_gr + 
+  ggtitle("Relación entre Minifiguras y Amazon_Price por Temática") +
+  labs(subtitle = "Star Wars y Duplo")
+```
+
+
+En el caso de Star Wars, si vemos de forma más clara que en Duplo, cierta relación positiva entre el precio en Amazon del lego y la cantidad de Minifiguras que contiene este.
+
+
+```{r}
+DT$Ages <- factor(DT$Ages, levels = c("1+", "2+", "3+", "4+", "5+", "6+", "7+", "8+", "9+", "10+",
+                                      "11+", "12+", "14+", "16+", "18+"))
+
+# Filtrar el dataset para incluir solo los temas Star Wars y Duplo
+temas_seleccionados <- c("Star Wars", "Duplo")
+DT_filtrado <- DT[Theme %in% temas_seleccionados]
+
+# Crear el gráfico de barras
+grafico <- ggplot(DT_filtrado, aes(x = Ages, y = Minifigures, fill = Theme)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Adjust bar positioning
+  facet_grid(Theme ~ ., scales = "free") +
+  labs(x = "Edades", y = "Minifiguras", fill = "Tema") +
+  theme_bw()  
+
+# Añadir título y subtítulo
+grafico + 
+  labs(title = "Relación entre Edades y Minifiguras de Star Wars y Duplo")
+```
+
+
+No parece haber ningún patrón claro de que la cantidad de minifiguras que contiene influya en la edad recomendada.
+
+Con base en el análisis realizado, se observa una clara diferenciación en las temáticas entre Duplo y Star Wars, reflejada en la distribución de edades recomendadas y la cantidad de minifiguras. Duplo tiende a estar dirigido a un público más joven, mientras que Star Wars a un público más mayor, lo que sugiere una segmentación de mercado por parte de la marca LEGO. Sin embargo, se nota una variedad en la cantidad de minifiguras dentro de cada temática, sin una correlación evidente con las edades recomendadas, aunque se aprecia una relación con los precios en Amazon. Este análisis inicial proporciona una visión general de las estrategias de precios, lo que podría guiar decisiones futuras en marketing y desarrollo de productos.
+
+Continuando con está línea del análisis, veremos la relación entre la complejidad del juego (cantidad de piezas) con la cantidad de minifiguras, el precio en Amazon y el peso.
+
+## Analisis por complejidad
+
+Continuando con esta línea de análisis, exploraremos la relación entre la complejidad del juego, medida por la cantidad de piezas, y la cantidad de minifiguras, el precio en Amazon y el peso. En primer lugar, nos enfocaremos en la temática de Star Wars para comprender cómo la complejidad de los juegos influye en estas variables clave, y, a continuación lo haremos con Duplo.
+
+Star Wars
+
+```{r}
+SW_mas_complejos <- DT %>%
+  filter(Theme %in% c("Star Wars")) %>%
+  arrange(desc(Pieces)) %>%
+  slice(1:5) %>%
+  select(Set_Name, Theme, Pieces, Minifigures, Amazon_Price, Peso_Kg)
+
+SW_menos_complejos <- DT %>%
+  filter(Theme %in% c("Star Wars")) %>%
+  arrange(Pieces) %>%
+  slice(1:5) %>%
+  select(Set_Name, Theme, Pieces, Minifigures, Amazon_Price, Peso_Kg)
+print(SW_mas_complejos)
+print(SW_menos_complejos)
+```
+
+
+Duplo
+
+```{r}
+
+D_mas_complejos <- DT %>%
+  filter(Theme %in% c("Duplo")) %>%
+  arrange(desc(Pieces)) %>%
+  slice(1:5) %>%
+  select(Set_Name, Theme, Pieces, Minifigures, Amazon_Price, Peso_Kg)
+
+D_menos_complejos <- DT %>%
+  filter(Theme %in% c("Duplo")) %>%
+  arrange(Pieces) %>%
+  slice(1:5) %>%
+  select(Set_Name, Theme, Pieces, Minifigures, Amazon_Price, Peso_Kg)
+
+print(D_mas_complejos)
+print(D_menos_complejos)
+
+```
+
+
+
+```{r}
+# Filtrar el dataset para incluir solo las temáticas de Star Wars y Duplo
+DT_filtered <- DT[Theme %in% c("Star Wars", "Duplo")]
+
+# Crear el gráfico
+starwars_duplo_gr <- ggplot(DT_filtered, aes(x = Pieces, y = Minifigures)) +
+  geom_point(fill = 'grey', alpha = 0.25, size = 2) +
+  geom_smooth(span = 2) +
+  facet_grid(. ~ Theme, scales = 'free') +
+  labs(x = 'Pieces', y = 'Minifigures') +
+  theme_bw()
+
+# Agregar títulos y subtítulos
+starwars_duplo_gr + 
+  ggtitle("Relación entre Piezas y Minifiguras por Temática") +
+  labs(subtitle = "Star Wars y Duplo")
+
+```
+
+
+```{r}
+# Filtrar el dataset para incluir solo las temáticas de Star Wars y Duplo
+DT_filtered <- DT[Theme %in% c("Star Wars", "Duplo")]
+
+# Crear el gráfico 
+starwars_duplo_gr <- ggplot(DT_filtered, aes(x = Pieces, y = Amazon_Price)) +
+  geom_point(fill = 'grey', alpha = 0.25, size = 2) +
+  geom_smooth(span = 2) +
+  facet_grid(. ~ Theme, scales = 'free') +
+  labs(x = 'Pieces', y = 'Amazon_Price') +
+  theme_bw()
+
+# Agregar títulos y subtítulos
+starwars_duplo_gr + 
+  ggtitle("Relación entre Piezas y Amazon_Price por Temática") +
+  labs(subtitle = "Star Wars y Duplo")
+
+
+```
+
+
+```{r}
+# Filtrar el dataset para incluir solo las temáticas de Star Wars y Duplo
+DT_filtered <- DT[Theme %in% c("Star Wars", "Duplo")]
+
+# Crear el gráfico 
+starwars_duplo_gr <- ggplot(DT_filtered, aes(x = Pieces, y = Peso_Kg)) +
+  geom_point(fill = 'grey', alpha = 0.25, size = 2) +
+  geom_smooth(span = 2) +
+  facet_grid(. ~ Theme, scales = 'free') +
+  labs(x = 'Pieces', y = 'Peso_Kg') +
+  theme_bw()
+
+# Agregar títulos y subtítulos
+starwars_duplo_gr + 
+  ggtitle("Relación entre Piezas y Peso_Kg por Temática") +
+  labs(subtitle = "Star Wars y Duplo")
+
+
+```
+
+
+Según la observación de los gráficos, se evidencia una relación positiva entre la complejidad del juego, medida por el número de piezas, y otras variables analizadas. Esta relación parece ser más notable con el peso del producto y el precio en Amazon, en comparación con la cantidad de minifiguras. Sin embargo, se identifican ciertos matices en esta relación.
+
+
+## Clusterización
+
+```{r}
+seleccion <- DT %>%
+  filter(Theme %in% c("Star Wars", "Duplo")) %>%
+  select(Theme, Pieces, Ages, Minifigures, Amazon_Price)
+```
+
+```{r}
+library(mclust)
+
+# Ajustar el modelo GMM
+gmm_model <- Mclust(seleccion[, -1])
+
+# Asignar cada punto a un cluster
+seleccion$cluster <- gmm_model$classification
+```
+```{r}
+n_clusters <- seq(2, 10)
+models <- lapply(n_clusters, function(k) Mclust(seleccion[, -1], G = k))
+bics <- sapply(models, function(model) BIC(model))
+
+# Seleccionar el modelo con el BIC más bajo
+best_model <- models[[which.min(bics)]]
+
+```
+El análisis de clustering nos ha permitido identificar patrones y agrupar los juegos de LEGO de las temáticas "Star Wars" y "Duplo" en función de sus características, como el número de piezas y el precio en Amazon. Los clusters obtenidos nos proporcionan información sobre cómo se relacionan estas variables entre sí y cómo se distribuyen los juegos dentro de cada cluster.
+
+
+```{r}
+# Asegúrate de que tienes el objeto cluster correctamente asignado a tu conjunto de datos seleccion
+seleccion <- seleccion %>%
+  mutate(cluster = gmm_model$classification)
+
+# Graficar los puntos coloreados por cluster
+ggplot(seleccion, aes(x = Pieces, y = Amazon_Price, color = factor(cluster))) +
+  geom_smooth(method = "lm", aes(color = factor(cluster))) +
+  labs(title = "Clustering con Modelo de Mezcla de Gaussianas",
+       x = "Piezas",
+       y = "Precio en Amazon",
+       color = "Cluster") +
+  theme_minimal()
+```
+
+
+Al observar el gráfico de dispersión entre el número de piezas y el precio en Amazon, podemos ver cómo los juegos se agrupan en diferentes áreas del espacio de características. Esto sugiere que hay cierta relación entre la complejidad del juego (medida por el número de piezas) y su precio en Amazon. Sin embargo, también se observa cierta dispersión dentro de cada cluster, lo que indica que otros factores podrían estar influyendo en el precio.
+
+```{r}
+ggplot(seleccion, aes(x = Theme, y = Amazon_Price, color = factor(cluster))) +
+  geom_violin(method = "lm", aes(color = factor(cluster))) +
+  labs(title = "Clustering con Modelo de Mezcla de Gaussianas",
+       x = "Temática",
+       y = "Precio en Amazon",
+       color = "Cluster") +
+  theme_minimal()
+```
+
+
+El gráfico nos comparte cómo varía el precio en Amazon para las temáticas "Star Wars" y "Duplo" dentro de cada cluster. Esto nos proporciona una perspectiva más detallada sobre cómo se distribuyen los precios para cada temática y cómo difieren entre los diferentes clusters.
+
+La clusterización de los temas de Star Wars y Duplo según sus características nos proporciona una valiosa información para entender mejor el mercado, optimizar nuestras estrategias comerciales y desarrollar productos más acordes a las necesidades de los clientes.
+
+Al agrupar productos similares dentro de cada tema, la clusterización nos permite tener una visión más clara de las preferencias y demandas de los consumidores. Esto nos capacita para adaptar estratégicamente nuestras tácticas de marketing y ventas, abordando de manera más efectiva las necesidades específicas de cada segmento del mercado.
+
+Además, al comprender mejor qué características son más valoradas por los consumidores en los juegos de LEGO, podemos utilizar la clusterización como una guía para el desarrollo de nuevos productos. Esto nos ayuda a dirigir nuestros esfuerzos hacia la creación de productos que estén alineados con las preferencias y expectativas del mercado, asegurando una mayor aceptación por parte de nuestros clientes.
+
+
