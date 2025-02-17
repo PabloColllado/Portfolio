@@ -33,7 +33,7 @@ Crop Recommendation/
 │
 └── scripts/                     # 🏗️ Automatización del pipeline
     ├── run_pipeline.bat         # ▶️ Script para Windows
-    ├── run_pipeline.sh          # ▶️ Script para Linux/Mac
+
 ```
 
 ---
@@ -43,7 +43,6 @@ Crop Recommendation/
 Asegúrate de tener **Python 3.x** y crea un entorno virtual:
 ```bash
 python -m venv venv
-source venv/bin/activate  # (Linux/Mac)
 venv\Scripts\activate     # (Windows)
 ```
 
