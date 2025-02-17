@@ -56,7 +56,6 @@ pip install -r requirements.txt
 Ejecuta el script para procesar datos, entrenar el modelo y hacer predicciones:
 ```bash
 cd scripts
-./run_pipeline.sh   # (Linux/Mac)
 run_pipeline.bat    # (Windows)
 ```
 
