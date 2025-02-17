@@ -19,7 +19,7 @@ Crop Recommendation/
 │
 ├── models/                     # 🧠 Modelos entrenados
 │   ├── mejor_modelo.pkl        # ✅ Mejor modelo guardado
-│   ├── label_encoder.pkl       # 🔠 Codificador de etiquetas
+│
 │
 ├── predictions/                 # 📄 Predicciones generadas
 │   ├── predictions.json        # 📂 Historial de predicciones
