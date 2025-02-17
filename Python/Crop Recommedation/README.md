@@ -100,13 +100,4 @@ Cada predicción se almacena en `predictions/predictions.json` con este formato:
 
 ---
 
-## 🛠 **Tecnologías Usadas**
-✅ **Python** (3.x)  
-✅ **Pandas, NumPy, Matplotlib, Seaborn** (Análisis y visualización)  
-✅ **Scikit-learn** (Entrenamiento del modelo)  
-✅ **Pickle** (Guardado del modelo)  
-✅ **JSON** (Almacenamiento de predicciones)  
 
----
-
-🚀 **¡Listo! Copia y pega este README.md en tu proyecto. ¿Quieres añadir algo más?** 😃🔥
