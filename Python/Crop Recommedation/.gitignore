@@ -1,0 +1,31 @@
+# 🖥️ Ignorar archivos y carpetas del entorno virtual
+venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.dll
+
+# 🚀 Archivos de configuración y dependencias
+.env
+.DS_Store
+Thumbs.db
+
+# 🔥 Archivos de modelos y datos grandes
+models/*.pkl
+models/*.h5
+data/*.csv
+data/*.json
+
+# 📂 Predicciones generadas
+predictions/*.json
+
+# 🔹 Archivos de logs y caché
+logs/
+*.log
+*.cache
+*.ipynb_checkpoints
+
+# 🏗️ Archivos generados por el sistema
+*.swp
+*.swo
