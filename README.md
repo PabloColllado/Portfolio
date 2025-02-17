@@ -1,8 +1,9 @@
 # Portfolio de Proyectos de Ciencia de Datos
 
+## Python
 ---
 
-## **1. Preprocesamiento y Análisis de Datos**
+### **1. Preprocesamiento y Análisis de Datos**
 Repositorio: [Preprocesado y Análisis de Datos](https://github.com/PabloColllado/Portfolio/tree/main/Python/Preprocesado_Datos)
 
 En este proyecto, se llevó a cabo un preprocesamiento y análisis exhaustivo de un dataset con el objetivo de preparar los datos para ser utilizados. Este proceso incluye:
@@ -22,7 +23,7 @@ En este proyecto, se llevó a cabo un preprocesamiento y análisis exhaustivo de
 
 ---
 
-## **2. Modelos de Machine Learning en Agricultura**
+### **2. Modelos de Machine Learning en Agricultura**
 Repositorio: [Modelos de Machine Learning](https://github.com/PabloColllado/Portfolio/tree/main/Python/Crop%20Recommedation)
 
 Este proyecto utiliza Machine Learning para ayudar a los agricultores a identificar el cultivo más adecuado según las condiciones del suelo y el clima. Para ello, analizamos datos relacionados con nutrientes, temperatura, humedad, pH y precipitaciones, entrenando un modelo de Random Forest que permite hacer recomendaciones precisas. Además, probamos diferentes algoritmos de clasificación para comparar su rendimiento y seleccionar el más eficiente, asegurando así predicciones confiables y útiles para la toma de decisiones.
