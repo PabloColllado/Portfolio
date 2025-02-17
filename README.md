@@ -22,19 +22,9 @@ En este proyecto, se llevó a cabo un preprocesamiento y análisis exhaustivo de
 
 ---
 
-## **2. Modelos de Machine Learning en Donaciones de Sangre**
-Repositorio: [Modelos de Machine Learning](https://github.com/PabloColllado/Portfolio/tree/main/Python/Sangre)
+## **2. Modelos de Machine Learning en Agricultura**
+Repositorio: [Modelos de Machine Learning](https://github.com/PabloColllado/Portfolio/tree/main/Python/Crop%20Recommedation)
 
-En este proyecto, se utilizó la base de datos **donaciones-de-sangre-y-aféresis.csv** del Open Data de Castilla y León para predecir el tipo de donación (sangre total, aféresis de plasma, etc.) basado en las características del donante.
-
-- **Pasos realizados**:
-  1. **Preprocesamiento y limpieza de datos**: Preparación de la base para modelado.
-  2. **Análisis exploratorio**: Identificación de patrones relevantes.
-  3. **Desarrollo de modelos**:
-     - Modelos de clasificación como XGBoost y LightGBM.
-     - Evaluación de métricas clave (precision, recall, F1-score).
-
-- **Objetivo**:
-  Predecir el tipo de donación a partir de variables como el grupo sanguíneo, rango de edad, género y características adicionales del donante.
+Este proyecto utiliza Machine Learning para ayudar a los agricultores a identificar el cultivo más adecuado según las condiciones del suelo y el clima. Para ello, analizamos datos relacionados con nutrientes, temperatura, humedad, pH y precipitaciones, entrenando un modelo de Random Forest que permite hacer recomendaciones precisas. Además, probamos diferentes algoritmos de clasificación para comparar su rendimiento y seleccionar el más eficiente, asegurando así predicciones confiables y útiles para la toma de decisiones.
 
 ---
